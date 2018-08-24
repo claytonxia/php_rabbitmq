@@ -231,30 +231,39 @@ class RabbitHelper
     {
         self::checkConfigIsLoaded();
         $consumerInfo = self::extractConsumer($consumer);
-        $conn = self::getConnection($consumerInfo['connection']);
-        $chan = $conn->channel();
-        $chan->basic_qos(
-            $consumerInfo['consumer']['qos_prefetch_size'] !== null ? $consumerInfo['consumer']['qos_prefetch_size'] : self::$defaultQosConfig['qos_prefetch_size'],
-            $consumerInfo['consumer']['qos_prefetch_count'] !== null ? $consumerInfo['consumer']['qos_prefetch_count'] : self::$defaultQosConfig['qos_prefetch_count'],
-            null
-        );
-        $callback = new $consumerInfo['consumer']['callback'];
-        $chan->basic_consume(
-            $consumerInfo['consumer']['queue'],
-            '',
-            false,
-            $consumerInfo['consumer']['no_ack'] !== null ? $consumerInfo['consumer']['no_ack'] : false,
-            false,
-            false,
-            [$callback, "execute"],
-            null,
-            []
-        );
-        while (count($chan->callbacks)) {
-            $chan->wait();
+        while (true) {
+            try {
+                $conn = self::getConnection($consumerInfo['connection']);
+                $chan = $conn->channel();
+                $chan->basic_qos(
+                    $consumerInfo['consumer']['qos_prefetch_size'] !== null ? $consumerInfo['consumer']['qos_prefetch_size'] : self::$defaultQosConfig['qos_prefetch_size'],
+                    $consumerInfo['consumer']['qos_prefetch_count'] !== null ? $consumerInfo['consumer']['qos_prefetch_count'] : self::$defaultQosConfig['qos_prefetch_count'],
+                    null
+                );
+                $callback = new $consumerInfo['consumer']['callback'];
+                $chan->basic_consume(
+                    $consumerInfo['consumer']['queue'],
+                    '',
+                    false,
+                    $consumerInfo['consumer']['no_ack'] !== null ? $consumerInfo['consumer']['no_ack'] : false,
+                    false,
+                    false,
+                    [$callback, "execute"],
+                    null,
+                    []
+                );
+                while (count($chan->callbacks)) {
+                    $chan->wait();
+                }
+                $chan->close();
+                $conn->close();
+            } catch (\Exception $e) {
+                $stderr = fopen("php://stderr", "w");
+                fwrite($stderr, $e->getTraceAsString() . PHP_EOL);
+                fclose($stderr);
+                sleep(10);
+            }
         }
-        $chan->close();
-        $conn->close();
     }
 
     public static function extractPublisher($publisher)
