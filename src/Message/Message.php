@@ -42,7 +42,7 @@ class Message
 
     const EXCHANGE_PARAMETER = "exchange";
 
-    const BINDING_PARAMETER = "routing_key";
+    const BINDING_PARAMETER = "binding";
 
     const CONNECTION_PARAMETER = "connection";
 
