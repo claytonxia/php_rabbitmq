@@ -20,6 +20,8 @@ class ConsumerPcntlCommand extends Command
 
     public $pcntlPath;
 
+    public $projectPcntlPath;
+
     public function __construct()
     {
         parent::__construct();
@@ -37,11 +39,35 @@ class ConsumerPcntlCommand extends Command
     public function execute(InputInterface $input, OutputInterface $output)
     {
         self::$config = RabbitHelper::getConfig();
+        $this->initProjectPcntlDir();
         $action = $input->getArgument("action");
         $param = $input->getArgument("param");
         $connection = $input->getArgument("connection") ? : self::$config['rabbitmq']['default_connection'];
         $this->checkActionSuppored($action);
         call_user_func_array([$this, $action], [$param, $connection]);
+    }
+
+    private function initProjectPcntlDir()
+    {
+        if (!isset(self::$config['rabbitmq']['project_root_path']) || !self::$config['rabbitmq']['project_root_path']) {
+            throw new \Exception("please config project root path in rabbit.yml");
+        }
+        $projectRootPath = self::$config['rabbitmq']['project_root_path'];
+        if (!file_exists($projectRootPath)) {
+            throw new \Exception("project root path not exists");
+        }
+        if (substr($projectRootPath, -1) != DIRECTORY_SEPARATOR) {
+            $projectRootPath = $projectRootPath . DIRECTORY_SEPARATOR;
+        }
+        $projectPcntlPath = $projectRootPath . 'pcntl';
+        if (!file_exists($projectPcntlPath)) {
+            mkdir($projectPcntlPath);
+        }
+        $this->projectPcntlPath = $projectPcntlPath;
+        $relativeDirArray = ['/Conf', '/Run', '/Log'];
+        foreach ($relativeDirArray as $dir) {
+            !file_exists($projectPcntlPath . $dir) && mkdir($projectPcntlPath . $dir);
+        }
     }
 
     private function checkActionSuppored($action)
@@ -58,7 +84,9 @@ class ConsumerPcntlCommand extends Command
         $configTemplateLoader = new FilesystemLoader($this->pcntlPath . '/%name%');
         $templating = new PhpEngine(new TemplateNameParser(), $configTemplateLoader);
 
-        $consumerCommand = sprintf('%s rabbit:consume-queue %s', realpath(__DIR__ . '/../../rabbit_manager'), $consumer);
+        $phpBin = isset(self::$config['rabbitmq']['php_bin_path']) && self::$config['rabbitmq']['php_bin_path'] !== null ? self::$config['rabbitmq']['php_bin_path'] : "php";
+
+        $consumerCommand = sprintf('%s %s rabbit:consume-queue %s', $phpBin, realpath(__DIR__ . '/../../rabbit_manager'), $consumer);
         $consumerNumProcs = isset($consumerDetail['num_procs']) && $consumerDetail['num_procs'] !== null ? $consumerDetail['num_procs'] : 1;
 
         $configValArray = [
@@ -75,7 +103,7 @@ class ConsumerPcntlCommand extends Command
 
         $config = $templating->render("program.php", $configValArray);
 
-        $targetConfigFile = sprintf("%s/Conf/%s.ini", $this->pcntlPath, $consumer);
+        $targetConfigFile = sprintf("%s/Conf/%s.ini", $this->projectPcntlPath, $consumer);
         file_put_contents($targetConfigFile, $config);
 
         $this->renderPcntlConfig();
@@ -84,7 +112,7 @@ class ConsumerPcntlCommand extends Command
     private function init($consumer, $connection)
     {
         $this->checkPcntlConfigExist($consumer);
-        $cmd = sprintf("/usr/bin/supervisord -c %s", $this->pcntlPath . '/supervisord.conf');
+        $cmd = sprintf("/usr/bin/supervisord -c %s", $this->projectPcntlPath . '/supervisord.conf');
         $this->runCommand($cmd);
     }
 
@@ -93,7 +121,7 @@ class ConsumerPcntlCommand extends Command
         $this->checkPcntlConfigExist($consumer);
         $procNum = $this->getConsumerProcNum($consumer, $connection);
         for ($i = 0; $i < $procNum; $i++) {
-            $cmd = sprintf("/usr/bin/supervisorctl -c %s start %s", $this->pcntlPath . '/supervisord.conf', sprintf("%s_%s:%s_%s_%02d", $connection, $consumer, $connection, $consumer, $i));
+            $cmd = sprintf("/usr/bin/supervisorctl -c %s start %s", $this->projectPcntlPath . '/supervisord.conf', sprintf("%s_%s:%s_%s_%02d", $connection, $consumer, $connection, $consumer, $i));
             $this->runCommand($cmd);
         }
         $this->status($consumer, $connection);
@@ -104,7 +132,7 @@ class ConsumerPcntlCommand extends Command
         $this->checkPcntlConfigExist($consumer);
         $procNum = $this->getConsumerProcNum($consumer, $connection);
         for ($i = 0; $i < $procNum; $i++) {
-            $cmd = sprintf("/usr/bin/supervisorctl -c %s stop %s", $this->pcntlPath . '/supervisord.conf', sprintf("%s_%s:%s_%s_%02d", $connection, $consumer, $connection, $consumer, $i));
+            $cmd = sprintf("/usr/bin/supervisorctl -c %s stop %s", $this->projectPcntlPath . '/supervisord.conf', sprintf("%s_%s:%s_%s_%02d", $connection, $consumer, $connection, $consumer, $i));
             $this->runCommand($cmd);
         }
         $this->status($consumer, $connection);
@@ -113,7 +141,7 @@ class ConsumerPcntlCommand extends Command
     private function reload($consumer = null, $connection = null)
     {
         $this->checkPcntlConfigExist($consumer);
-        $cmd = sprintf("/usr/bin/supervisorctl -c %s reload", $this->pcntlPath . '/supervisord.conf');
+        $cmd = sprintf("/usr/bin/supervisorctl -c %s reload", $this->projectPcntlPath . '/supervisord.conf');
         $this->runCommand($cmd);
     }
 
@@ -122,7 +150,7 @@ class ConsumerPcntlCommand extends Command
         $this->checkPcntlConfigExist($consumer);
         $procNum = $this->getConsumerProcNum($consumer, $connection);
         for ($i = 0; $i < $procNum; $i++) {
-            $cmd = sprintf("/usr/bin/supervisorctl -c %s status %s", $this->pcntlPath . '/supervisord.conf', sprintf("%s_%s:%s_%s_%02d", $connection, $consumer, $connection, $consumer, $i));
+            $cmd = sprintf("/usr/bin/supervisorctl -c %s status %s", $this->projectPcntlPath . '/supervisord.conf', sprintf("%s_%s:%s_%s_%02d", $connection, $consumer, $connection, $consumer, $i));
             $status = $this->runCommand($cmd);
             echo $status;
         }
@@ -139,7 +167,7 @@ class ConsumerPcntlCommand extends Command
 
     private function checkPcntlConfigExist($consumer)
     {
-        $configPath = sprintf("%s/Conf/%s.ini", $this->pcntlPath, $consumer);
+        $configPath = sprintf("%s/Conf/%s.ini", $this->projectPcntlPath, $consumer);
         if (!file_exists($configPath)) {
             throw new \Exception("config file not found, init first");
         }
@@ -157,12 +185,12 @@ class ConsumerPcntlCommand extends Command
         $fileLoader = new FilesystemLoader($this->pcntlPath . '/%name%');
         $templating = new PhpEngine(new TemplateNameParser, $fileLoader);
         $targetConfigContent = $templating->render("supervisord.conf.tpl", [
-            "sock_path" => realpath($this->pcntlPath) . '/Run/supervisord.sock',
-            "log_file" => realpath($this->pcntlPath) . '/Log/consumer.log',
-            "pid_file" => realpath($this->pcntlPath) . '/Run/supervisord.pid',
-            "config_pattern" => realpath($this->pcntlPath) . '/Conf/*.ini'
+            "sock_path" => realpath($this->projectPcntlPath) . '/Run/supervisord.sock',
+            "log_file" => realpath($this->projectPcntlPath) . '/Log/consumer.log',
+            "pid_file" => realpath($this->projectPcntlPath) . '/Run/supervisord.pid',
+            "config_pattern" => realpath($this->projectPcntlPath) . '/Conf/*.ini'
         ]);
-        file_put_contents($this->pcntlPath . '/supervisord.conf', $targetConfigContent);
+        file_put_contents($this->projectPcntlPath . '/supervisord.conf', $targetConfigContent);
     }
 
     private function getConsumerProcNum($consumer, $connection)

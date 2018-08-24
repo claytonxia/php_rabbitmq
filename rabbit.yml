@@ -1,5 +1,7 @@
 rabbitmq:
   default_connection: connection1
+  php_bin_path: ~
+  project_root_path: ~
   connections:
     connection1:
       host: localhost
