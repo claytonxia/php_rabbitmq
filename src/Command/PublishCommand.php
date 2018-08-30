@@ -14,6 +14,7 @@ class PublishCommand extends RabbitCommand
         $this->setName("rabbit:publish");
         $this->addArgument("publisher", InputArgument::REQUIRED, "publisher name in rabbit.yml");
         $this->addArgument("message", InputArgument::REQUIRED, "string message to publish");
+        $this->setDescription("publish to queue");
     }
 
     public function execute(InputInterface $input, OutputInterface $output)
