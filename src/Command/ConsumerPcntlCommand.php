@@ -12,7 +12,7 @@ use Symfony\Component\Templating\PhpEngine;
 use Symfony\Component\Process\Process;
 use Cto\Rabbit\Helper\RabbitHelper;
 
-class ConsumerPcntlCommand extends Command
+class ConsumerPcntlCommand extends RabbitCommand
 {
     public static $supportedAction = ['config', 'init', 'start', 'stop', 'reload', 'status'];
 
