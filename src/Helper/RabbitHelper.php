@@ -259,9 +259,6 @@ class RabbitHelper
                 $chan->close();
                 $conn->close();
             } catch (\Exception $e) {
-                $stderr = fopen("php://stderr", "w");
-                fwrite($stderr, $e->getTraceAsString() . PHP_EOL);
-                fclose($stderr);
                 sleep(10);
             }
         }
