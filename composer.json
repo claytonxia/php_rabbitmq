@@ -20,7 +20,7 @@
             "Cto\\Rabbit\\": "./src"
         },
         "files": [
-            "MainConsumer.php"
+            "DemoConsumer.php"
         ]
     },
     "bin": ["rabbit_manager"]

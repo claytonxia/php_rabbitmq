@@ -45,7 +45,7 @@ rabbitmq:
       consumers:
           consumer1:
             queue: q1
-            callback: MainConsumer
+            callback: DemoConsumer
             qos_prefetch_size: ~
             qos_prefetch_count: ~
             no_ack: ~
