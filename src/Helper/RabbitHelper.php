@@ -139,7 +139,7 @@ class RabbitHelper
                     $queue['exclusive'] !== null ? $queue['exclusive'] : self::$defaultQueueConfig['exclusive'],
                     $queue['auto_delete'] !== null ? $queue['auto_delete'] : self::$defaultQueueConfig['auto_delete'],
                     $queue['nowait'] !== null ? $queue['nowait'] : self::$defaultQueueConfig['nowait'],
-                    $queue['arguments'] !== null ? $queue['arguments'] : self::$defaultQueueConfig['arguments'],
+                    $queue['arguments'] !== null ? new AMQPTable($queue['arguments']) : new AMQPTable(self::$defaultQueueConfig['arguments']),
                     $queue['ticket'] !== null ? $queue['ticket'] : self::$defaultQueueConfig['ticket']
                 );
             }
@@ -171,7 +171,7 @@ class RabbitHelper
                 $exchange['durable'] !== null ? $exchange['durable'] : self::$defaultExchangeConfig['durable'],
                 $exchange['auto_delete'] !== null ? $exchange['auto_delete'] : self::$defaultExchangeConfig['auto_delete'],
                 $exchange['nowait'] !== null ? $exchange['nowait'] : self::$defaultExchangeConfig['nowait'],
-                $exchange['arguments'] !== null ? $exchange['arguments'] : self::$defaultExchangeConfig['arguments'],
+                $exchange['arguments'] !== null ? new AMQPTable($exchange['arguments']) : new AMQPTable(self::$defaultExchangeConfig['arguments']),
                 $exchange['ticket'] !== null ? $exchange['ticket'] : self::$defaultExchangeConfig['ticket']
             ) : 
             $chan->exchange_delete($exchange['name']);
