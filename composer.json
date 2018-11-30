@@ -13,7 +13,8 @@
         "symfony/yaml": "^3.4",
         "symfony/console": "^3.4",
         "symfony/templating": "^3.4",
-        "symfony/process": "^3.4"
+        "symfony/process": "^3.4",
+        "monolog/monolog": "^1.24"
     },
     "autoload": {
         "psr-4": {

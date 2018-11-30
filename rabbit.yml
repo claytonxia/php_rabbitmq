@@ -2,6 +2,10 @@ rabbitmq:
   default_connection: connection1
   php_bin_path: ~
   project_root_path: ~
+  log:
+    log_on: false
+    log_name: php_rabbit_logger
+    log_file_path: rabbit.log
   connections:
     connection1:
       host: localhost
