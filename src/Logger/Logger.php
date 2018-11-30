@@ -27,8 +27,8 @@ class Logger
         if (!$logPath = $logConfig["log_file_path"]) {
             throw new \Exception("log file not configured");
         }
-        $logLevel = isset($logConfig["log_level"]) ? $logConfig["log_level"] : self::$defaultLoggerLevel;
-        $logger = new MLogger(isset($logConfig["log_name"]) ? $logConfig["log_name"] : self::$defaultLoggerName);
+        $logLevel = $logConfig["log_level"] !== null ? $logConfig["log_level"] : self::$defaultLoggerLevel;
+        $logger = new MLogger($logConfig["log_name"] !== null ? $logConfig["log_name"] : self::$defaultLoggerName);
         $streamHandler = new StreamHandler($logPath);
         $logger->pushHandler($streamHandler);
         call_user_func_array(array($logger, $name), $arguments);
