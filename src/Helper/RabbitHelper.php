@@ -6,6 +6,7 @@ use Symfony\Component\Yaml\Yaml;
 use PhpAmqpLib\Connection\AMQPStreamConnection;
 use PhpAmqpLib\Message\AMQPMessage;
 use PhpAmqpLib\Wire\AMQPTable;
+use Cto\Rabbit\Logger\Logger;
 
 
 class RabbitHelper
@@ -87,6 +88,7 @@ class RabbitHelper
         }
         $connectionDetail = $connectionArray[$name];
         try {
+            Logger::info("connecting");
             $conn = new AMQPStreamConnection(
                 $connectionDetail['host'] !== null ? $connectionDetail['host'] : self::$defaultConnectionConfig['host'],
                 $connectionDetail['port'] !== null ? $connectionDetail['port'] : self::$defaultConnectionConfig['port'],
@@ -105,6 +107,7 @@ class RabbitHelper
             );
         } catch (\Exception $e) {
             sleep(2);
+            Logger::error($e->getTraceAsString());
             exit("Error in connecting to queue" . PHP_EOL);
         }
         return $conn;
@@ -128,10 +131,13 @@ class RabbitHelper
         $chan = $conn->channel();
         foreach ($declaringQueueArray as $queue) {
             if ($isPurge === true) {
+                Logger::info("purge queue " . $queue["name"]);
                 $chan->queue_purge($queue['name']);
             } elseif ($isDelete === true) {
+                Logger::info("delete queue " . $queue["name"]);
                 $chan->queue_delete($queue['name']);
             } else {
+                Logger::info("declare queue " . $queue["name"]);
                 $chan->queue_declare(
                     $queue['name'],
                     $queue['passive'] !== null ? $queue['passive'] : self::$defaultQueueConfig['passive'],
@@ -163,6 +169,8 @@ class RabbitHelper
         }
         $chan = $conn->channel();
         foreach ($declaringExchangeArray as $exchange) {
+            $exchangeAction = ($isDelete === "true") ? "delete" : "declare";
+            Logger::info("$exchangeAction exchange " . $exchange["name"]);
             $isDelete === false ?
             $chan->exchange_declare(
                 $exchange['name'],
@@ -205,6 +213,9 @@ class RabbitHelper
                 null
             ) :
             $chan->queue_unbind($binding['queue'], $binding['exchange'], $binding['routing_key']);
+            $bindingAction = ($isDelete === true) ? "delete" : "declare";
+            $logMessage = sprintf("%s binding %s and %s with %s", $bindingAction, $binding['queue'], $binding['exchange'], $binding['routing_key']);
+            Logger::info($logMessage);
         }
     }
 
@@ -223,6 +234,7 @@ class RabbitHelper
         $chan = $conn->channel();
         $msg = new AMQPMessage($message, ['delivery_mode' => $producerInfo['producer']['delivery_mode'] !== null ? $producerInfo['producer']['delivery_mode'] : 2]);
         $msg->set("application_headers", new AMQPTable($attribute));
+        Logger::info("publish message to " . $producerInfo['producer']['exchange']);
         $chan->basic_publish($msg, $producerInfo['producer']['exchange'], $producerInfo['producer']['routing_key']);
         $chan->close();
         $conn->close();
@@ -242,6 +254,7 @@ class RabbitHelper
                     null
                 );
                 $callback = new $consumerInfo['consumer']['callback'];
+                Logger::info("consume queue " . $consumerInfo['consumer']['queue']);
                 $chan->basic_consume(
                     $consumerInfo['consumer']['queue'],
                     '',
@@ -259,6 +272,7 @@ class RabbitHelper
                 $chan->close();
                 $conn->close();
             } catch (\Exception $e) {
+                Logger::error($e->getTraceAsString());
                 sleep(10);
             }
         }
