@@ -1,6 +1,15 @@
 <?php
 
-require_once __DIR__ . '/../../autoload.php';
+$autoloadFileArray = [
+    __DIR__ . '/../../autoload.php',
+    __DIR__ . '/vendor/autoload.php'
+];
+
+foreach ($autoloadFileArray as $autoloadFile) {
+    if (file_exists($autoloadFile)) {
+        require_once $autoloadFile;
+    }
+}
 
 use Cto\Rabbit\Consumer\AbstractConsumer;
 use PhpAMqplib\Message\AMQPMessage;

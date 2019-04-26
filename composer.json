@@ -1,5 +1,5 @@
 {
-    "name": "51cto/rabbit",
+    "name": "claytonxia/rabbit",
     "description": "队列操作简单封装",
     "type": "library",
     "authors": [
